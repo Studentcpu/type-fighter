@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Type Fighter - Martial Arts Canvas Typing Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #020617;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background-color: #020617;
+    }
+    /* Top HUD */
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      pointer-events: none;
+      z-index: 10;
+      background: linear-gradient(180deg, rgba(2, 6, 23, 0.85) 0%, rgba(2, 6, 23, 0) 100%);
+    }
+    .hud-zone {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      pointer-events: auto;
+    }
+    .health-bar-container {
+      width: 220px;
+      height: 18px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .health-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #10b981, #38bdf8);
+      transition: width 0.15s ease-out, background 0.2s ease;
+    }
+    .health-bar-fill.warning {
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+    }
+    .health-bar-fill.danger {
+      background: #ef4444;
+    }
+    .hud-label {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+    }
+    .metric-group {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .metric-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      font-size: 24px;
+      color: #38bdf8;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric-unit {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .combo-badge {
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      color: #fbbf24;
+      text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+    }
+    /* Buttons */
+    .btn {
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(30, 41, 59, 0.8);
+      color: #f8fafc;
+      padding: 8px 16px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn:hover {
+      background: #334155;
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    .btn-primary {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #ffffff;
+      padding: 12px 28px;
+      font-size: 16px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+    }
+    .btn-primary:hover {
+      background: #0369a1;
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    }
+    /* Overlays (Start Menu, Pause, Game Over) */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.88);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 24px;
+    }
+    .modal-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 36px 44px;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+    .title-display {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 42px;
+      font-weight: 800;
+      font-style: italic;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .title-sub {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      text-align: left;
+      margin-bottom: 28px;
+      background: rgba(2, 6, 23, 0.5);
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+    }
+    .rule-item {
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+    .rule-item strong {
+      color: #38bdf8;
+    }
+    .difficulty-select {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .diff-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #94a3b8;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .diff-btn.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+    /* Battle Report */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #1e293b;
+      font-size: 14px;
+    }
+    .stat-row:last-child {
+      border-bottom: none;
+    }
+    .stat-label {
+      color: #94a3b8;
+    }
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .rank-badge {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 54px;
+      font-weight: 800;
+      color: #fbbf24;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <!-- Top HUD -->
+    <div id="hud">
+      <!-- Left: Player Health -->
+      <div class="hud-zone">
+        <div>
+          <div class="hud-label">HP · STABLE</div>
+          <div class="health-bar-container">
+            <div id="health-bar" class="health-bar-fill"></div>
+          </div>
+        </div>
+        <div id="combo-display" class="combo-badge" style="display: none;">0x COMBO</div>
+      </div>
+
+      <!-- Right: WPM, Accuracy, Wave, Sound Toggle -->
+      <div class="hud-zone">
+        <div class="metric-group">
+          <span class="hud-label">WPM</span>
+          <span id="wpm-val" class="metric-value">0</span>
+        </div>
+        <div class="metric-group">
+          <span class="hud-label">ACC</span>
+          <span id="acc-val" class="metric-value">100%</span>
+        </div>
+        <div class="metric-group">
+          <span class="hud-label">SCORE</span>
+          <span id="score-val" class="metric-value">0</span>
+        </div>
+        <div class="metric-group">
+          <span class="hud-label">WAVE</span>
+          <span id="wave-val" class="metric-value">1</span>
+        </div>
+        <button id="sound-btn" class="btn" onclick="toggleSound()">Sound: ON</button>
+        <button id="pause-btn" class="btn" onclick="togglePause()">Pause [Esc]</button>
+      </div>
+    </div>
+
+    <!-- Canvas Arena -->
+    <canvas id="canvas"></canvas>
+
+    <!-- Start Modal -->
+    <div id="start-modal" class="modal-overlay">
+      <div class="modal-card">
+        <h1 class="title-display">TYPE FIGHTER</h1>
+        <p class="title-sub">Defend the dojo with martial arts typing combos. Your typing speed (WPM) fuels fierce attacks!</p>
+
+        <div class="rules-grid">
+          <div class="rule-item"><strong>Type to Attack:</strong> Type the word floating above each enemy to defeat them before they reach you.</div>
+          <div class="rule-item"><strong>Speed Tiers:</strong> High WPM unleashes Fierce Combos, Cyclone Kicks, and Flaming Dragon strikes.</div>
+          <div class="rule-item"><strong>Accuracy Matters:</strong> Typos break your combo streak and reduce damage multiplier.</div>
+          <div class="rule-item"><strong>Defense Line:</strong> Enemies that breach the defense line strike you for HP damage.</div>
+        </div>
+
+        <div class="difficulty-select">
+          <button class="diff-btn active" onclick="setDiff('easy', this)">EASY</button>
+          <button class="diff-btn" onclick="setDiff('normal', this)">NORMAL</button>
+          <button class="diff-btn" onclick="setDiff('hard', this)">HARD</button>
+        </div>
+
+        <button class="btn btn-primary" onclick="startGame()">START FIGHT [SPACE]</button>
+      </div>
+    </div>
+
+    <!-- Pause Modal -->
+    <div id="pause-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <h2 class="title-display" style="font-size: 32px;">PAUSED</h2>
+        <p class="title-sub">Take a breath. Press Resume or ESC to jump back into combat.</p>
+        <div style="display: flex; justify-content: center; gap: 12px; margin-top: 20px;">
+          <button class="btn btn-primary" onclick="togglePause()">RESUME</button>
+          <button class="btn" onclick="restartGame()">RESTART</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <h2 class="title-display" style="font-size: 36px; color: #ef4444;">KNOCKED OUT</h2>
+        <div id="rank-display" class="rank-badge">RANK A</div>
+
+        <div style="margin: 20px 0; text-align: left;">
+          <div class="stat-row">
+            <span class="stat-label">Final WPM</span>
+            <span id="final-wpm" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Peak WPM</span>
+            <span id="peak-wpm" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Accuracy</span>
+            <span id="final-acc" class="stat-value">100%</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Enemies Defeated</span>
+            <span id="final-enemies" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Max Combo</span>
+            <span id="final-combo" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Final Score</span>
+            <span id="final-score" class="stat-value">0</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="restartGame()">PLAY AGAIN [ENTER]</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Word Dictionaries */
+    const WORDS_3 = ['hit','jab','kick','slam','dash','fast','fist','flow','fire','wind','iron','rush','spin','drop','leap','claw','beat','rage','edge','duel','bolt','fury','helm','lock','mark','grip','apex','bold','pace','flex'];
+    const WORDS_4 = ['kick','punch','dash','jump','fist','iron','slam','rush','claw','fury','fire','wind','rage','duel','beat','drop','leap','edge','bolt','lock','grip','apex','bold','pace','flex','blade','clash','combo','brave','guard','sweep','block','shove','parry','smash','swift','surge','spark'];
+    const WORDS_5 = ['blade','clash','combo','punch','strike','brave','guard','sweep','block','shove','parry','smash','swift','surge','spark','force','ninja','viper','tiger','brawl','round','heavy','focus','power','storm','ghost','armor','flare','rapid','crush','fight','stand','slash','steel','venom'];
+    const WORDS_6 = ['attack','flying','dragon','shadow','lethal','master','impact','reflex','counter','battle','spirit','vortex','strike','charge','thrust','shield','frenzy','combat','warrior','blades','stance','stride','assault','defend','hybrid','crouch','ignite','torque','furious','brawler'];
+    const WORDS_7 = ['whirlwind','tornado','champion','phantom','warrior','crusher','slasher','tempest','piercing','onslaught','shredder','striker','guardian','cyclone','supremacy','berserk','fighter','justice','punisher','dynamite','shockwave'];
+    const WORDS_8_PLUS = ['whirlwind','devastation','supersonic','unstoppable','invincible','adrenaline','execution','championship','annihilation','resilience','overpowered','demolition','equilibrium','juggernaut','combustion','retribution','indomitable','relentless','dragonpunch','counterstrike'];
+
+    function getWord(diff, wave, tier) {
+      let pool = WORDS_3;
+      if (tier === 'runner') pool = WORDS_3.concat(WORDS_4);
+      else if (tier === 'boss') pool = WORDS_8_PLUS;
+      else if (tier === 'brawler') pool = WORDS_6.concat(WORDS_7);
+      else {
+        const effWave = wave + (diff === 'hard' ? 2 : diff === 'easy' ? -1 : 0);
+        if (effWave <= 1) pool = WORDS_3;
+        else if (effWave <= 3) pool = WORDS_3.concat(WORDS_4);
+        else if (effWave <= 6) pool = WORDS_4.concat(WORDS_5);
+        else if (effWave <= 9) pool = WORDS_5.concat(WORDS_6);
+        else pool = WORDS_6.concat(WORDS_7, WORDS_8_PLUS);
+      }
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    /* Web Audio API Synthesizer */
+    class AudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx && window.AudioContext) {
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playKey() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(650 + Math.random() * 200, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.04);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.04);
+      }
+      playTypo() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(110, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.14);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.15);
+      }
+      playHit(tier) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = tier === 'DRAGON' ? 'sine' : 'square';
+        osc.frequency.setValueAtTime(tier === 'DRAGON' ? 280 : 200, t);
+        osc.frequency.exponentialRampToValueAtTime(45, t + 0.2);
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.2);
+      }
+      playPlayerHurt() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(90, t);
+        osc.frequency.exponentialRampToValueAtTime(35, t + 0.25);
+        gain.gain.setValueAtTime(0.35, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.25);
+      }
+      playChime(count) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const notes = [523, 587, 659, 783, 880, 1046];
+        const freq = notes[count % notes.length];
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.2);
+      }
+    }
+    const audio = new AudioEngine();
+
+    /* Game State */
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let difficulty = 'easy';
+    let gameState = 'START'; // START, PLAYING, PAUSED, GAMEOVER
+
+    let player = {
+      x: 140, y: 0, baseX: 140, baseY: 0, targetX: 140,
+      health: 100, maxHealth: 100, state: 'idle',
+      animTime: 0, animDuration: 0.35, attackVariant: 0,
+      attackType: 'NORMAL', hurtTimer: 0, aura: 0
+    };
+
+    let enemies = [];
+    let particles = [];
+    let floatingTexts = [];
+    let activeEnemyId = null;
+    let enemyIdCounter = 0;
+    let spawnTimer = 0;
+    let spawnInterval = 3.2;
+    let shakeAmount = 0;
+
+    let stats = {
+      score: 0, enemies: 0, correct: 0, wrong: 0,
+      wpm: 0, peakWpm: 0, accuracy: 100, combo: 0, maxCombo: 0,
+      wave: 1, startTime: 0
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      player.baseY = height * 0.76 - 68;
+      if (player.state === 'idle') player.y = player.baseY;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    /* Stickman Renderer */
+    function drawStickman(x, y, facing, pose, opts) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(0, 68, 25, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Aura
+      if (opts.aura && opts.aura > 0) {
+        ctx.save();
+        ctx.shadowColor = opts.auraColor || '#38bdf8';
+        ctx.shadowBlur = 16 * opts.aura;
+        ctx.strokeStyle = opts.auraColor || '#38bdf8';
+        ctx.lineWidth = opts.lineWidth + 2;
+        ctx.globalAlpha = 0.5 * opts.aura;
+        renderBones(facing, pose, opts);
+        ctx.restore();
+      }
+
+      ctx.strokeStyle = opts.color;
+      ctx.lineWidth = opts.lineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      renderBones(facing, pose, opts);
+      ctx.restore();
+    }
+
+    function renderBones(facing, pose, opts) {
+      const r = opts.headRadius || 12;
+      // LegL
+      ctx.beginPath();
+      ctx.moveTo(pose.hip.x * facing, pose.hip.y);
+      ctx.lineTo(pose.legL.k.x * facing, pose.legL.k.y);
+      ctx.lineTo(pose.legL.f.x * facing, pose.legL.f.y);
+      ctx.stroke();
+      // ArmL
+      ctx.beginPath();
+      ctx.moveTo(pose.s.x * facing, pose.s.y);
+      ctx.lineTo(pose.armL.e.x * facing, pose.armL.e.y);
+      ctx.lineTo(pose.armL.h.x * facing, pose.armL.h.y);
+      ctx.stroke();
+      // Torso
+      ctx.beginPath();
+      ctx.moveTo(pose.s.x * facing, pose.s.y);
+      ctx.lineTo(pose.hip.x * facing, pose.hip.y);
+      ctx.stroke();
+      // LegR
+      ctx.beginPath();
+      ctx.moveTo(pose.hip.x * facing, pose.hip.y);
+      ctx.lineTo(pose.legR.k.x * facing, pose.legR.k.y);
+      ctx.lineTo(pose.legR.f.x * facing, pose.legR.f.y);
+      ctx.stroke();
+      // ArmR
+      ctx.beginPath();
+      ctx.moveTo(pose.s.x * facing, pose.s.y);
+      ctx.lineTo(pose.armR.e.x * facing, pose.armR.e.y);
+      ctx.lineTo(pose.armR.h.x * facing, pose.armR.h.y);
+      ctx.stroke();
+      // Head
+      const hX = (pose.s.x + pose.head.x) * facing;
+      const hY = pose.s.y - r - 4 + pose.head.y;
+      ctx.beginPath();
+      ctx.arc(hX, hY, r, 0, Math.PI * 2);
+      ctx.stroke();
+      // Headband
+      if (opts.headband) {
+        ctx.save();
+        ctx.strokeStyle = opts.headband;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(hX, hY, r + 1, -Math.PI * 0.8, -Math.PI * 0.2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(hX - r * facing, hY - 1);
+        ctx.quadraticCurveTo(hX - (r + 10) * facing, hY + 6, hX - (r + 18) * facing, hY + 3);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function getPlayerPose(time) {
+      if (player.state === 'hurt') {
+        return {
+          head: { x: -8, y: -4 }, s: { x: -6, y: -20 }, hip: { x: 0, y: 18 },
+          armL: { e: { x: -18, y: -10 }, h: { x: -14, y: 5 } },
+          armR: { e: { x: -12, y: -25 }, h: { x: 0, y: -30 } },
+          legL: { k: { x: -16, y: 40 }, f: { x: -25, y: 68 } },
+          legR: { k: { x: 8, y: 38 }, f: { x: 5, y: 68 } }
+        };
+      }
+      if (player.state === 'dash') {
+        return {
+          head: { x: 8, y: 2 }, s: { x: 8, y: -18 }, hip: { x: -6, y: 14 },
+          armL: { e: { x: -15, y: -8 }, h: { x: -25, y: 2 } },
+          armR: { e: { x: 18, y: -10 }, h: { x: 28, y: -12 } },
+          legL: { k: { x: -20, y: 35 }, f: { x: -30, y: 65 } },
+          legR: { k: { x: 14, y: 36 }, f: { x: 22, y: 68 } }
+        };
+      }
+      if (player.state === 'attack') {
+        const progress = Math.min(1, player.animTime / player.animDuration);
+        const v = player.attackVariant;
+
+        // 4: Spinning Kick (360 whirlwind crescent kick)
+        if (v === 4 || player.defeatMove === 'spinning_kick') {
+          const spinAngle = progress * Math.PI * 2;
+          const hopY = -Math.sin(progress * Math.PI) * 22;
+          const kickLead = Math.cos(spinAngle);
+          const reach = Math.sin(progress * Math.PI) * 44;
+          return {
+            head: { x: kickLead * 8, y: -2 + hopY },
+            s: { x: kickLead * 6, y: -22 + hopY },
+            hip: { x: -kickLead * 4, y: 14 + hopY },
+            armL: { e: { x: -kickLead * 18, y: -16 + hopY }, h: { x: -kickLead * 28, y: -8 + hopY } },
+            armR: { e: { x: kickLead * 18, y: -22 + hopY }, h: { x: kickLead * 28, y: -14 + hopY } },
+            legL: { k: { x: -kickLead * 10, y: 34 + hopY }, f: { x: -kickLead * 16, y: 56 + hopY } },
+            legR: { k: { x: kickLead * 24, y: 16 - Math.abs(kickLead) * 18 + hopY }, f: { x: kickLead * reach + 18, y: -6 - Math.abs(kickLead) * 24 + hopY } }
+          };
+        }
+
+        // 5: Jumping Punch (Superman leap strike forward and down)
+        if (v === 5 || player.defeatMove === 'jumping_punch') {
+          const jumpArc = Math.sin(progress * Math.PI);
+          const leapY = -jumpArc * 34;
+          const punchForward = jumpArc * 46;
+          return {
+            head: { x: 8, y: leapY - 2 },
+            s: { x: 12, y: -20 + leapY },
+            hip: { x: -10, y: 12 + leapY },
+            armL: { e: { x: -16, y: -6 + leapY }, h: { x: -28, y: 4 + leapY } },
+            armR: { e: { x: 20 + punchForward * 0.4, y: -14 + leapY }, h: { x: 34 + punchForward, y: -4 + leapY } },
+            legL: { k: { x: -22, y: 28 + leapY }, f: { x: -36, y: 45 + leapY } },
+            legR: { k: { x: 4, y: 36 + leapY }, f: { x: -6, y: 58 + leapY } }
+          };
+        }
+
+        if (v === 0) {
+          const reach = Math.sin(progress * Math.PI) * 38;
+          return {
+            head: { x: 4, y: 0 }, s: { x: 4, y: -22 }, hip: { x: -2, y: 15 },
+            armL: { e: { x: -6, y: -18 }, h: { x: -2, y: -24 } },
+            armR: { e: { x: 14 + reach * 0.45, y: -22 }, h: { x: 26 + reach, y: -22 } },
+            legL: { k: { x: -14, y: 38 }, f: { x: -20, y: 68 } },
+            legR: { k: { x: 12, y: 38 }, f: { x: 18, y: 68 } }
+          };
+        } else if (v === 1) {
+          const arc = Math.sin(progress * Math.PI);
+          return {
+            head: { x: -10 * arc, y: 2 * arc }, s: { x: -10 * arc, y: -20 }, hip: { x: 0, y: 15 },
+            armL: { e: { x: -18, y: -10 }, h: { x: -24, y: 4 } },
+            armR: { e: { x: 2, y: -26 }, h: { x: 10, y: -15 } },
+            legL: { k: { x: -4, y: 40 }, f: { x: -6, y: 68 } },
+            legR: { k: { x: 18 * arc, y: 10 - 25 * arc }, f: { x: 42 * arc, y: -12 - 20 * arc } }
+          };
+        } else {
+          const peak = Math.sin(progress * Math.PI);
+          return {
+            head: { x: 4, y: -8 * peak }, s: { x: 2, y: -24 - 35 * peak }, hip: { x: -4, y: 12 - 35 * peak },
+            armL: { e: { x: -14, y: -10 - 35 * peak }, h: { x: -10, y: 6 - 35 * peak } },
+            armR: { e: { x: 8, y: -38 - 35 * peak }, h: { x: 12, y: -58 - 35 * peak } },
+            legL: { k: { x: -8, y: 35 - 35 * peak }, f: { x: -12, y: 60 - 35 * peak } },
+            legR: { k: { x: 12, y: 28 - 35 * peak }, f: { x: 6, y: 52 - 35 * peak } }
+          };
+        }
+      }
+      const bob = Math.sin(time * 6) * 3;
+      return {
+        head: { x: 2, y: bob }, s: { x: 2, y: -22 + bob }, hip: { x: 0, y: 15 + bob * 0.5 },
+        armL: { e: { x: -10, y: -14 + bob }, h: { x: 2, y: -24 + bob } },
+        armR: { e: { x: 8, y: -16 + bob }, h: { x: 18, y: -22 + bob } },
+        legL: { k: { x: -12, y: 40 }, f: { x: -16, y: 68 } },
+        legR: { k: { x: 10, y: 40 }, f: { x: 14, y: 68 } }
+      };
+    }
+
+    function getEnemyPose(enemy) {
+      const leg = Math.sin(enemy.walkCycle) * 18;
+      const arm = Math.cos(enemy.walkCycle) * 16;
+      const bob = Math.abs(Math.sin(enemy.walkCycle)) * 4;
+      return {
+        head: { x: 0, y: bob }, s: { x: 0, y: -22 + bob }, hip: { x: 0, y: 15 + bob * 0.5 },
+        armL: { e: { x: -arm * 0.6, y: -14 + bob }, h: { x: -arm, y: -8 + bob } },
+        armR: { e: { x: arm * 0.6, y: -14 + bob }, h: { x: arm, y: -8 + bob } },
+        legL: { k: { x: -leg * 0.5, y: 40 }, f: { x: -leg, y: 68 } },
+        legR: { k: { x: leg * 0.5, y: 40 }, f: { x: leg, y: 68 } }
+      };
+    }
+
+    function spawn() {
+      enemyIdCounter++;
+      let tier = 'grunt';
+      if (stats.wave >= 3 && Math.random() < 0.25) tier = 'runner';
+      else if (stats.wave >= 4 && Math.random() < 0.22) tier = 'brawler';
+      else if (stats.wave % 5 === 0 && !enemies.some(e => e.tier === 'boss')) tier = 'boss';
+
+      const baseSpeed = difficulty === 'easy' ? 24 : difficulty === 'hard' ? 42 : 32;
+      let speed = baseSpeed * (1 + stats.wave * 0.08);
+      let maxHealth = 60;
+      let color = '#f87171';
+      let headbandColor = '#ef4444';
+      let scale = 1.0;
+
+      if (tier === 'runner') { speed *= 1.45; maxHealth = 45; color = '#fbbf24'; headbandColor = '#d97706'; scale = 0.92; }
+      else if (tier === 'brawler') { speed *= 0.72; maxHealth = 130; color = '#a855f7'; headbandColor = '#7e22ce'; scale = 1.18; }
+      else if (tier === 'boss') { speed *= 0.55; maxHealth = 240; color = '#e11d48'; headbandColor = '#fbbf24'; scale = 1.35; }
+
+      const word = getWord(difficulty, stats.wave, tier);
+      const lastEnemy = enemies[enemies.length - 1];
+      const spawnX = Math.max(width + 40, (lastEnemy ? lastEnemy.x + 90 : width + 50));
+
+      enemies.push({
+        id: `e_${enemyIdCounter}`,
+        tier, word, typedIndex: 0, errorTimer: 0,
+        x: spawnX, y: player.baseY, speed, health: maxHealth,
+        color, headbandColor, scale, walkCycle: 0, attackCooldown: 0
+      });
+    }
+
+    /* Controls & Keystroke Listener */
+    window.addEventListener('keydown', (e) => {
+      if (gameState === 'START') {
+        if (e.key === ' ' || e.key === 'Enter') startGame();
+        return;
+      }
+      if (gameState === 'GAMEOVER') {
+        if (e.key === 'Enter' || e.key === ' ') restartGame();
+        return;
+      }
+      if (e.key === 'Escape' || e.key === 'Pause') {
+        togglePause();
+        return;
+      }
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        if (activeEnemyId) {
+          const prev = enemies.find(en => en.id === activeEnemyId);
+          if (prev) prev.typedIndex = 0;
+          activeEnemyId = null;
+        }
+        return;
+      }
+      if (gameState !== 'PLAYING') return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+
+      e.preventDefault();
+      handleKey(e.key.toLowerCase());
+    });
+
+    function handleKey(char) {
+      if (!activeEnemyId) {
+        const candidates = enemies.filter(e => e.health > 0 && e.word[0].toLowerCase() === char);
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => a.x - b.x);
+          activeEnemyId = candidates[0].id;
+        }
+      }
+
+      const active = enemies.find(e => e.id === activeEnemyId && e.health > 0);
+      if (active) {
+        const expected = active.word[active.typedIndex]?.toLowerCase();
+        if (char === expected) {
+          active.typedIndex++;
+          stats.correct++;
+          audio.playKey();
+
+          if (active.typedIndex >= active.word.length) {
+            executeAttack(active);
+          }
+        } else {
+          // Typo
+          stats.wrong++;
+          active.errorTimer = 0.25;
+          stats.combo = 0;
+          audio.playTypo();
+          shakeAmount = 5;
+        }
+      } else {
+        stats.wrong++;
+        stats.combo = 0;
+        audio.playTypo();
+        shakeAmount = 4;
+      }
+      updateStatsUI();
+    }
+
+    function executeAttack(enemy) {
+      const elapsedMin = Math.max(0.05, (Date.now() - stats.startTime) / 60000);
+      const wpm = Math.round((stats.correct / 5) / elapsedMin);
+
+      let tier = 'NORMAL';
+      let dmg = 65;
+      if (wpm >= 95) { tier = 'DRAGON'; dmg = 180; }
+      else if (wpm >= 65) { tier = 'CYCLONE'; dmg = 130; }
+      else if (wpm >= 35) { tier = 'FIERCE'; dmg = 95; }
+
+      audio.playHit(tier);
+
+      // Check if enemy defeated
+      const willDefeat = (enemy.health - dmg) <= 0;
+      let defeatMove = null;
+      let moveVariant = (player.attackVariant + 1) % 4;
+      let moveLabel = '';
+
+      if (willDefeat) {
+        const len = enemy.word.length;
+        if (difficulty === 'hard') {
+          if (len >= 7) { defeatMove = 'spinning_kick'; moveVariant = 4; moveLabel = 'SPINNING KICK!'; }
+          else if (len >= 5) { defeatMove = 'jumping_punch'; moveVariant = 5; moveLabel = 'JUMPING PUNCH!'; }
+          else { defeatMove = 'spinning_kick'; moveVariant = 4; moveLabel = 'SPINNING KICK!'; }
+        } else if (difficulty === 'normal') {
+          if (len >= 7) { defeatMove = 'dragon_uppercut'; moveVariant = 3; moveLabel = 'DRAGON UPPERCUT!'; }
+          else if (len >= 5) { defeatMove = 'spinning_kick'; moveVariant = 4; moveLabel = 'SPINNING KICK!'; }
+          else { defeatMove = 'jumping_punch'; moveVariant = 5; moveLabel = 'JUMPING PUNCH!'; }
+        } else {
+          // Easy
+          if (len >= 6) { defeatMove = 'jumping_punch'; moveVariant = 5; moveLabel = 'JUMPING PUNCH!'; }
+          else if (len >= 4) { defeatMove = 'spinning_kick'; moveVariant = 4; moveLabel = 'SPINNING KICK!'; }
+          else { defeatMove = 'jumping_punch'; moveVariant = 5; moveLabel = 'JUMPING PUNCH!'; }
+        }
+      }
+
+      // Dash attack
+      player.state = 'dash';
+      player.animTime = 0;
+      player.animDuration = willDefeat ? 0.38 : 0.28;
+      player.targetX = Math.min(enemy.x - 35, 450);
+      player.defeatMove = defeatMove;
+      player.attackVariant = moveVariant;
+      player.aura = tier === 'DRAGON' || defeatMove === 'dragon_uppercut' ? 1.0 : defeatMove === 'spinning_kick' || tier === 'CYCLONE' ? 0.8 : defeatMove === 'jumping_punch' || tier === 'FIERCE' ? 0.5 : 0;
+
+      enemy.health -= dmg;
+      stats.combo++;
+      if (stats.combo > stats.maxCombo) stats.maxCombo = stats.combo;
+      if (stats.combo >= 3) audio.playChime(stats.combo);
+
+      const pts = Math.round((enemy.word.length * 15 + (tier === 'DRAGON' ? 150 : 20) + (willDefeat ? 50 : 0)) * (1 + stats.combo * 0.05));
+      stats.score += pts;
+      shakeAmount = tier === 'DRAGON' || willDefeat ? 12 : 6;
+
+      // Sparks
+      for (let i = 0; i < 14; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 2 + Math.random() * 7;
+        particles.push({
+          x: enemy.x, y: enemy.y - 10,
+          vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 1,
+          color: tier === 'DRAGON' ? '#ef4444' : '#38bdf8',
+          radius: 2.5, alpha: 1, life: 0, maxLife: 0.4, gravity: 12
+        });
+      }
+
+      if (enemy.health <= 0) {
+        stats.enemies++;
+        enemies = enemies.filter(e => e.id !== enemy.id);
+        if (stats.enemies % 8 === 0) {
+          stats.wave++;
+          spawnInterval = Math.max(1.3, spawnInterval * 0.88);
+        }
+      } else {
+        enemy.word = getWord(difficulty, stats.wave, enemy.tier);
+        enemy.typedIndex = 0;
+      }
+      activeEnemyId = null;
+    }
+
+    function updateStatsUI() {
+      const elapsedMin = Math.max(0.02, (Date.now() - stats.startTime) / 60000);
+      stats.wpm = Math.round((stats.correct / 5) / elapsedMin);
+      if (stats.wpm > stats.peakWpm) stats.peakWpm = stats.wpm;
+      const totalKeys = stats.correct + stats.wrong;
+      stats.accuracy = totalKeys > 0 ? Math.round((stats.correct / totalKeys) * 100) : 100;
+
+      document.getElementById('wpm-val').innerText = stats.wpm;
+      document.getElementById('acc-val').innerText = stats.accuracy + '%';
+      document.getElementById('score-val').innerText = stats.score;
+      document.getElementById('wave-val').innerText = stats.wave;
+
+      const hpPercent = Math.max(0, (player.health / player.maxHealth) * 100);
+      const hpBar = document.getElementById('health-bar');
+      hpBar.style.width = hpPercent + '%';
+      if (hpPercent < 30) hpBar.className = 'health-bar-fill danger';
+      else if (hpPercent < 60) hpBar.className = 'health-bar-fill warning';
+      else hpBar.className = 'health-bar-fill';
+
+      const comboBadge = document.getElementById('combo-display');
+      if (stats.combo >= 2) {
+        comboBadge.style.display = 'block';
+        comboBadge.innerText = stats.combo + 'x COMBO';
+      } else {
+        comboBadge.style.display = 'none';
+      }
+    }
+
+    function update(dt) {
+      if (gameState !== 'PLAYING') return;
+
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) {
+        spawn();
+        spawnTimer = spawnInterval * (0.85 + Math.random() * 0.35);
+      }
+
+      if (player.state === 'dash') {
+        player.animTime += dt;
+        player.x += (player.targetX - player.x) * 16 * dt;
+        if (player.animTime >= player.animDuration * 0.4) player.state = 'attack';
+      } else if (player.state === 'attack') {
+        player.animTime += dt;
+        if (player.animTime >= player.animDuration) player.state = 'retreat';
+      } else if (player.state === 'retreat') {
+        player.x += (player.baseX - player.x) * 12 * dt;
+        if (Math.abs(player.x - player.baseX) < 4) {
+          player.x = player.baseX;
+          player.state = 'idle';
+          player.aura = 0;
+          player.defeatMove = null;
+        }
+      } else if (player.state === 'hurt') {
+        player.hurtTimer -= dt;
+        if (player.hurtTimer <= 0) player.state = 'idle';
+      }
+
+      const defenseThreshold = 185;
+      for (const enemy of enemies) {
+        if (enemy.errorTimer > 0) enemy.errorTimer -= dt;
+        if (enemy.attackCooldown > 0) enemy.attackCooldown -= dt;
+        enemy.walkCycle += dt * (enemy.speed * 0.16);
+        enemy.x -= enemy.speed * dt;
+
+        if (enemy.x <= defenseThreshold && enemy.attackCooldown <= 0) {
+          player.health -= 15;
+          player.state = 'hurt';
+          player.hurtTimer = 0.3;
+          stats.combo = 0;
+          audio.playPlayerHurt();
+          shakeAmount = 12;
+          enemy.x = defenseThreshold + 40;
+          enemy.attackCooldown = 1.3;
+
+          if (player.health <= 0) {
+            player.health = 0;
+            gameOver();
+            return;
+          }
+        }
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life += dt;
+        p.x += p.vx; p.y += p.vy;
+        p.vy += p.gravity * dt;
+        p.alpha = 1 - p.life / p.maxLife;
+        if (p.life >= p.maxLife) particles.splice(i, 1);
+      }
+
+      if (shakeAmount > 0) shakeAmount = Math.max(0, shakeAmount - dt * 25);
+      updateStatsUI();
+    }
+
+    function render(time) {
+      const sX = (Math.random() - 0.5) * shakeAmount;
+      const sY = (Math.random() - 0.5) * shakeAmount;
+
+      ctx.save();
+      ctx.translate(sX, sY);
+
+      // Arena background
+      const grad = ctx.createLinearGradient(0, 0, 0, height);
+      grad.addColorStop(0, '#090d16');
+      grad.addColorStop(0.7, '#0f172a');
+      grad.addColorStop(1, '#020617');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+
+      const floorY = height * 0.76;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, floorY);
+      ctx.lineTo(width, floorY);
+      ctx.stroke();
+
+      // Floor grid lines
+      ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 14; i++) {
+        const tx = (width / 14) * i;
+        ctx.beginPath();
+        ctx.moveTo(tx, floorY);
+        ctx.lineTo(tx + (i - 7) * 45, height);
+        ctx.stroke();
+      }
+
+      // Stickman Player
+      const pPose = getPlayerPose(time / 1000);
+      drawStickman(player.x, player.y, 1, pPose, {
+        color: player.state === 'hurt' ? '#ef4444' : '#38bdf8',
+        lineWidth: 3.5, headRadius: 13, headband: '#38bdf8', aura: player.aura
+      });
+
+      // Enemies
+      for (const enemy of enemies) {
+        const ePose = getEnemyPose(enemy);
+        drawStickman(enemy.x, enemy.y, -1, ePose, {
+          color: enemy.color, lineWidth: 3.2 * enemy.scale,
+          headRadius: 12 * enemy.scale, headband: enemy.headbandColor
+        });
+
+        // Floating word
+        drawWord(enemy);
+      }
+
+      // Particles
+      for (const p of particles) {
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawWord(enemy) {
+      const isTarget = enemy.id === activeEnemyId;
+      const isErr = enemy.errorTimer > 0;
+      ctx.save();
+      ctx.font = '700 18px "JetBrains Mono", monospace';
+      const tw = ctx.measureText(enemy.word).width;
+      const bx = enemy.x - tw / 2 - 12;
+      const by = enemy.y - 62 * enemy.scale;
+
+      ctx.fillStyle = isErr ? 'rgba(239, 68, 68, 0.3)' : isTarget ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.8)';
+      ctx.strokeStyle = isErr ? '#ef4444' : isTarget ? '#38bdf8' : '#475569';
+      ctx.lineWidth = isTarget ? 2 : 1;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, tw + 24, 30, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      let cx = bx + 12;
+      for (let i = 0; i < enemy.word.length; i++) {
+        const ch = enemy.word[i];
+        const cw = ctx.measureText(ch).width;
+        if (i < enemy.typedIndex) ctx.fillStyle = '#10b981';
+        else if (i === enemy.typedIndex && isTarget) ctx.fillStyle = isErr ? '#ef4444' : '#f8fafc';
+        else ctx.fillStyle = '#94a3b8';
+
+        ctx.fillText(ch, cx, by + 21);
+        cx += cw;
+      }
+      ctx.restore();
+    }
+
+    let lastTime = 0;
+    function loop(t) {
+      const dt = Math.min((t - lastTime) / 1000, 0.1);
+      lastTime = t;
+      update(dt);
+      render(t);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    /* UI Interactions */
+    function setDiff(d, btn) {
+      difficulty = d;
+      document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function startGame() {
+      audio.init();
+      gameState = 'PLAYING';
+      document.getElementById('start-modal').style.display = 'none';
+      document.getElementById('pause-modal').style.display = 'none';
+      document.getElementById('game-over-modal').style.display = 'none';
+      player.health = 100;
+      player.x = 140;
+      enemies = [];
+      particles = [];
+      activeEnemyId = null;
+      stats = {
+        score: 0, enemies: 0, correct: 0, wrong: 0,
+        wpm: 0, peakWpm: 0, accuracy: 100, combo: 0, maxCombo: 0,
+        wave: 1, startTime: Date.now()
+      };
+      spawnTimer = 1.0;
+      spawnInterval = difficulty === 'easy' ? 3.8 : difficulty === 'hard' ? 2.4 : 3.0;
+      updateStatsUI();
+    }
+
+    function togglePause() {
+      if (gameState === 'PLAYING') {
+        gameState = 'PAUSED';
+        document.getElementById('pause-modal').style.display = 'flex';
+      } else if (gameState === 'PAUSED') {
+        gameState = 'PLAYING';
+        document.getElementById('pause-modal').style.display = 'none';
+      }
+    }
+
+    function toggleSound() {
+      audio.enabled = !audio.enabled;
+      document.getElementById('sound-btn').innerText = 'Sound: ' + (audio.enabled ? 'ON' : 'MUTED');
+    }
+
+    function gameOver() {
+      gameState = 'GAMEOVER';
+      document.getElementById('game-over-modal').style.display = 'flex';
+      document.getElementById('final-wpm').innerText = stats.wpm;
+      document.getElementById('peak-wpm').innerText = stats.peakWpm;
+      document.getElementById('final-acc').innerText = stats.accuracy + '%';
+      document.getElementById('final-enemies').innerText = stats.enemies;
+      document.getElementById('final-combo').innerText = stats.maxCombo;
+      document.getElementById('final-score').innerText = stats.score;
+
+      let rank = 'RANK D';
+      if (stats.wpm >= 85 && stats.accuracy >= 94) rank = 'RANK S (MASTER)';
+      else if (stats.wpm >= 65 && stats.accuracy >= 88) rank = 'RANK A (BLACK BELT)';
+      else if (stats.wpm >= 45) rank = 'RANK B (FIGHTER)';
+      else if (stats.wpm >= 28) rank = 'RANK C (APPRENTICE)';
+      document.getElementById('rank-display').innerText = rank;
+    }
+
+    function restartGame() {
+      startGame();
+    }
+  </script>
+</body>
+</html>

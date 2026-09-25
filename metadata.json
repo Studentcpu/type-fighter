@@ -1,0 +1,6 @@
+{
+  "name": "Type Fighter",
+  "description": "An action-packed HTML5 Canvas stickman typing game where your typing speed and accuracy power martial arts combat combos against incoming waves of enemies.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
